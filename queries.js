@@ -1,4 +1,4 @@
-const Pool = require('pg').Pool
+const { Pool } = require('pg')
 const pool = new Pool({
   user: 'me',
   host: 'localhost',
@@ -6,62 +6,67 @@ const pool = new Pool({
   password: 'password',
   port: 5432,
 })
-const getUsers = (request, response) => {
-  pool.query('SELECT * FROM users ORDER BY id ASC', (error, results) => {
-    if (error) {
-      throw error
-    }
-    response.status(200).json(results.rows)
-  })
+
+const getUsers = async (request, response) => {
+  try {
+    const result = await pool.query('SELECT * FROM users ORDER BY id ASC')
+    response.status(200).json(result.rows)
+  } catch (error) {
+    console.error('Error executing query', error.stack)
+    response.status(500).send('Internal Server Error')
+  }
 }
 
-const getUserById = (request, response) => {
+const getUserById = async (request, response) => {
   const id = parseInt(request.params.id)
 
-  pool.query('SELECT * FROM users WHERE id = $1', [id], (error, results) => {
-    if (error) {
-      throw error
-    }
-    response.status(200).json(results.rows)
-  })
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id])
+    response.status(200).json(result.rows)
+  } catch (error) {
+    console.error('Error executing query', error.stack)
+    response.status(500).send('Internal Server Error')
+  }
 }
 
-const createUser = (request, response) => {
+const createUser = async (request, response) => {
   const { name, email } = request.body
 
-  pool.query('INSERT INTO users (name, email) VALUES ($1, $2)', [name, email], (error, results) => {
-    if (error) {
-      throw error
-    }
-    response.status(201).send(`User added with ID: ${results.insertId}`)
-  })
+  try {
+    const result = await pool.query('INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id', [name, email])
+    response.status(201).send(`User added with ID: ${result.rows[0].id}`)
+  } catch (error) {
+    console.error('Error executing query', error.stack)
+    response.status(500).send('Internal Server Error')
+  }
 }
 
-const updateUser = (request, response) => {
+const updateUser = async (request, response) => {
   const id = parseInt(request.params.id)
   const { name, email } = request.body
 
-  pool.query(
-    'UPDATE users SET name = $1, email = $2 WHERE id = $3',
-    [name, email, id],
-    (error, results) => {
-      if (error) {
-        throw error
-      }
-      response.status(200).send(`User modified with ID: ${id}`)
-    }
-  )
+  try {
+    await pool.query(
+      'UPDATE users SET name = $1, email = $2 WHERE id = $3',
+      [name, email, id]
+    )
+    response.status(200).send(`User modified with ID: ${id}`)
+  } catch (error) {
+    console.error('Error executing query', error.stack)
+    response.status(500).send('Internal Server Error')
+  }
 }
 
-const deleteUser = (request, response) => {
+const deleteUser = async (request, response) => {
   const id = parseInt(request.params.id)
 
-  pool.query('DELETE FROM users WHERE id = $1', [id], (error, results) => {
-    if (error) {
-      throw error
-    }
+  try {
+    await pool.query('DELETE FROM users WHERE id = $1', [id])
     response.status(200).send(`User deleted with ID: ${id}`)
-  })
+  } catch (error) {
+    console.error('Error executing query', error.stack)
+    response.status(500).send('Internal Server Error')
+  }
 }
 
 module.exports = {
